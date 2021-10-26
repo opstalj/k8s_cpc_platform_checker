@@ -1,7 +1,7 @@
 # CPC K8s platform checker tool
 
 As you might know, the deployment of the Nokia CPC CNFs has quite some dependencies on the target platform.
-Sometimes, it can be a hassle to check these pre-requirements, but if you don't, there is a big chance that your deployment fails.
+Sometimes, it can be a hassle to check these pre-requirements, but if you don't, there is a big chance that your deployment will fail.
 
 That's where the CPC K8s platform checker tool comes in :)!
 It is written in python3 and allows you to check quickly whether the pre-requirements are fulfilled on the target Kubernetes platform :).
