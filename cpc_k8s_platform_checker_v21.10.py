@@ -1353,7 +1353,7 @@ if __name__ == "__main__":
         #
         #cmd=cmd_start_kubectl+'get nodes -o custom-columns=NAME:.metadata.name,CAP_SRIOV_IAVF_1:.status.capacity.gke/sriov_iavf_1,CAP_SRIOV_IAVF_2:.status.capacity.gke/sriov_iavf_2,CAP_SRIOV_IAVF_3:.status.capacity.gke/sriov_iavf_3,CAP_SRIOV_IAVF_4:.status.capacity.gke/sriov_iavf_4'
         print('\nAllocatable SRIOV interfaces:')
-        cmd='for i in `'+cmd_start_kubectl+'get node --selector=\'!node-role.kubernetes.io/master\' -o custom-columns=NAME:.metadata.name --no-headers`;do echo $i;'+cmd_start_kubectl+'describe node $i |sed -n -e \'/Allocatable/,/System Info:/ p\' |grep sriov;done'       
+        cmd='for i in `'+cmd_start_kubectl+'get node --selector=\'!node-role.kubernetes.io/master\' -o custom-columns=NAME:.metadata.name --no-headers`;do echo $i;'+cmd_start_kubectl+'describe node $i |sed -n -e \'/Allocatable/,/System Info:/ p\' |grep sriov|awk \'{ print "\\t" $1" \\t" $2 }\';done'       
         my_nodeInfo=get_Popen_info(cmd)
         print('\n'+my_nodeInfo)
         sys.exit()
