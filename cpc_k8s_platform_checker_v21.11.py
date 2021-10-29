@@ -44,14 +44,14 @@
 #  1) NEW:
 #   run_checks_alphabetically=True              : allows to run the checks in alphabetical order
 #   check_NRD_performance=True                  : check specific settings when NRD performance is needed
-#   amf_host_interface_list=['bond0.101']       : check whether AMF IPVLAN interfaces are up and running (existance, state) 
+#   amf_host_interface_list=['bond0.101']       : check whether these AMF IPVLAN interfaces are up and running (existance, state) 
 #   amf_worker_node_rmem_max=4194304            : value to check rmem_max on the AMF nodes
 #   amf_worker_node_wmem_max=4194304            : value to check rwem_max on the AMF nodes
 #   cmg_worker_node_rmem_max=4194304            : value to check rmem_max on the CMG nodes
 #   cmg_worker_node_wmem_max=4194304            : value to check rwem_max on the CMG nodes
 #   cmg_worker_node_udp_rmem_min=1048576        : value to check udp_rmem_max on the CMG nodes
-#   cmg_worker_node_udp_wmem_min=1048576        : value to check udp_rwem_max on the CMG nodes                                                  
-#   cmg_sriov_interface_list=['eno5','eno6']    : check SRIOV interfaces on the CMG nodes (existance, state, mtu, VFs) 
+#   cmg_worker_node_udp_wmem_min=1048576        : value to check udp_rwem_max on the CMG nodes
+#   cmg_sriov_interface_list=['eno5','eno6']    : check these SRIOV interfaces on the CMG nodes (existance, state, mtu, VFs) 
 #   cmg_sriov_interface_mtu_min=8900            : min mtu size value for CMG SRIOV interface
 #   level4=9                                    : indentation when printing report level4
 #  2) DEPRECATED:                               
