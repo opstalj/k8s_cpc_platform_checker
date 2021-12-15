@@ -172,6 +172,109 @@ Target platforms are all based on Kubernetes like:
 
     -> check_AMF_worker_nodes_selinux_permissive:
          node: worker2 has SELINUX setting OK -> SELINUX = permissive........................................ OK
+	 
+## Example 5: output on an OpenShift platform (only doing the CMG checks):
+    [vanopsta@centoc84-oc scripts]$ ./cpc_k8s_platform_checker_v21.12_uc.py -v
+
+    Progress: [########################################] 6/6                                                                       
+
+    Successful tests [4/6]:
+     - check_CMG_CPU_pinning
+     - check_CMG_HugePages
+     - check_CMG_worker_nodes_ipvlan_interfaces
+     - check_multus
+
+    Failing tests    [2/6]:
+     - check_CMG_worker_nodes_sriov_interfaces : mtu = 1500 (NOK: is NOT above: 8900)
+     - check_CMG_worker_nodes_sysctl           : sysctl value: net.ipv4.udp_wmem_min = 4096 -> not set to: 1048576
+
+    CPC platform checker report:
+    ****************************
+    CPC checker version:     version 21.12_UC
+    Platform:                OpenShift
+    K8s version:             Client Version: 4.9.4
+                             Server Version: 4.9.4
+    Start time:              2021-Dec-14 10:11:19
+
+    -> check_CMG_CPU_pinning:
+         node: m0 has cpuManagerPolicy: static............................................................... OK
+         node: m1 has cpuManagerPolicy: static............................................................... OK
+         node: m2 has cpuManagerPolicy: static............................................................... OK
+         node: w1 has cpuManagerPolicy: static............................................................... OK
+    -> check_CMG_HugePages:
+         node: m0 has HugePages enabled -> HugePages_Total: 50............................................... OK
+         node: m1 has HugePages enabled -> HugePages_Total: 50............................................... OK
+         node: m2 has HugePages enabled -> HugePages_Total: 50............................................... OK
+         node: w1 has HugePages enabled -> HugePages_Total: 50............................................... OK
+    -> check_CMG_worker_nodes_ipvlan_interfaces:
+         node: m0
+           has interface: enp1s0 -> UP & RUNNING............................................................. OK
+         node: m1
+           has interface: enp1s0 -> UP & RUNNING............................................................. OK
+         node: m2
+           has interface: enp1s0 -> UP & RUNNING............................................................. OK
+         node: w1
+           has interface: enp1s0 -> UP & RUNNING............................................................. OK
+    -> check_CMG_worker_nodes_sriov_interfaces:
+         node: m0
+           has interface: ens93f1 
+               UP & RUNNING.................................................................................. OK
+               mtu = 1500 (NOK: is NOT above: 8900).......................................................... FAILED
+         node: m1
+           has interface: ens93f1 
+               UP & RUNNING.................................................................................. OK
+               mtu = 1500 (NOK: is NOT above: 8900).......................................................... FAILED
+         node: m2
+           has interface: ens93f1 
+               UP & RUNNING.................................................................................. OK
+               mtu = 1500 (NOK: is NOT above: 8900).......................................................... FAILED
+         node: w1
+           has interface: ens93f1 
+               UP & RUNNING.................................................................................. OK
+               mtu = 1500 (NOK: is NOT above: 8900).......................................................... FAILED
+    -> check_CMG_worker_nodes_sysctl:
+         node: m0
+           sysctl value: net.core.rmem_default = 212992 -> not set to: 1048576............................... FAILED
+           sysctl value: net.core.rmem_max = 212992 -> not set to: 4194304................................... FAILED
+           sysctl value: net.core.wmem_default = 212992 -> not set to: 1048576............................... FAILED
+           sysctl value: net.core.wmem_max = 212992 -> not set to: 4194304................................... FAILED
+           sysctl value: net.ipv4.tcp_rmem = 4096 87380 6291456 -> not set to: 187380 655360 6291456......... FAILED
+           sysctl value: net.ipv4.udp_rmem_min = 4096 -> not set to: 1048576................................. FAILED
+           sysctl value: net.ipv4.udp_wmem_min = 4096 -> not set to: 1048576................................. FAILED
+           sysctl value: net.ipv6.conf.all.forwarding = 1.................................................... OK
+         node: m1
+           sysctl value: net.core.rmem_default = 212992 -> not set to: 1048576............................... FAILED
+           sysctl value: net.core.rmem_max = 212992 -> not set to: 4194304................................... FAILED
+           sysctl value: net.core.wmem_default = 212992 -> not set to: 1048576............................... FAILED
+           sysctl value: net.core.wmem_max = 212992 -> not set to: 4194304................................... FAILED
+           sysctl value: net.ipv4.tcp_rmem = 4096 87380 6291456 -> not set to: 187380 655360 6291456......... FAILED
+           sysctl value: net.ipv4.udp_rmem_min = 4096 -> not set to: 1048576................................. FAILED
+           sysctl value: net.ipv4.udp_wmem_min = 4096 -> not set to: 1048576................................. FAILED
+           sysctl value: net.ipv6.conf.all.forwarding = 1.................................................... OK
+         node: m2
+           sysctl value: net.core.rmem_default = 212992 -> not set to: 1048576............................... FAILED
+           sysctl value: net.core.rmem_max = 212992 -> not set to: 4194304................................... FAILED
+           sysctl value: net.core.wmem_default = 212992 -> not set to: 1048576............................... FAILED
+           sysctl value: net.core.wmem_max = 212992 -> not set to: 4194304................................... FAILED
+           sysctl value: net.ipv4.tcp_rmem = 4096 87380 6291456 -> not set to: 187380 655360 6291456......... FAILED
+           sysctl value: net.ipv4.udp_rmem_min = 4096 -> not set to: 1048576................................. FAILED
+           sysctl value: net.ipv4.udp_wmem_min = 4096 -> not set to: 1048576................................. FAILED
+           sysctl value: net.ipv6.conf.all.forwarding = 1.................................................... OK
+         node: w1
+           sysctl value: net.core.rmem_default = 212992 -> not set to: 1048576............................... FAILED
+           sysctl value: net.core.rmem_max = 212992 -> not set to: 4194304................................... FAILED
+           sysctl value: net.core.wmem_default = 212992 -> not set to: 1048576............................... FAILED
+           sysctl value: net.core.wmem_max = 212992 -> not set to: 4194304................................... FAILED
+           sysctl value: net.ipv4.tcp_rmem = 4096 87380 6291456 -> not set to: 187380 655360 6291456......... FAILED
+           sysctl value: net.ipv4.udp_rmem_min = 4096 -> not set to: 1048576................................. FAILED
+           sysctl value: net.ipv4.udp_wmem_min = 4096 -> not set to: 1048576................................. FAILED
+           sysctl value: net.ipv6.conf.all.forwarding = 1.................................................... OK
+    -> check_multus:
+         node: m0 multus enabled............................................................................. OK
+         node: m1 multus enabled............................................................................. OK
+         node: m2 multus enabled............................................................................. OK
+         node: w1 multus enabled............................................................................. OK
+
 ## More Info:
 
 [`jan.van_opstal@nokia.com`](mailto:jan.van_opstal@nokia.com)    
