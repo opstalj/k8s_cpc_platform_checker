@@ -3,13 +3,18 @@
 #
 # info: jan.van_opstal@nokia.com
 #
-# v21.10
+# v22.02
 
 # for now:
 worker_node_username='core'
 skip_username_worker_node_to_ssh=True
 
-# platform: set to: ncs (NCS), os (OpenShift) or gcp (Google Anthos)
+# target platform -> set to one of these: 
+#   ncs     : Nokia Container Services (NCS)
+#   os      : RedHat's OpenShift 
+#   gcp     : Google Cloud Platform (Anthos)
+#   eccd    : Ericson's Cloud Container Distribution
+#   k8s     : native k8s platform
 target_platform='gcp'
 
 # container runtime: 'docker', 'containerd'
@@ -23,7 +28,11 @@ k8s_cni='cilium'
 
 # start commands with:
 # could be: kubectl, sudo kubectl, sudo KUBECONFIG=$KUBECONFIG kubectl, ...
+# for OpenShift: oc
 cmd_start_kubectl='sudo KUBECONFIG=$KUBECONFIG kubectl '
+
+# label to define a worker node:
+label_workernode='baremetal.cluster.gke.io/node-pool=node-pool-1'
 
 # OPTIONAL: skip the following node(s) when running script:
 # eg: nodes_to_skip=['labmechra010n110.lab.tc.intern.telenet.be']
@@ -53,26 +62,54 @@ label_nrdnode='nrd=nrd1'
 label_nrd_database='app=nrddb'
 label_nrd='app=nrd'
 check_NRD_performance=True
+nrd_worker_node_sysctl={
+'net.ipv4.tcp_slow_start_after_idle': 0,
+'net.netfilter.nf_conntrack_tcp_timeout_unacknowledged': 10,
+'net.netfilter.nf_conntrack_tcp_timeout_max_retrans': 10
+}
 
 # amf:
 namespace_amf='amf'
 #label_amf='region=amf'
 label_amfnode='baremetal.cluster.gke.io/node-pool=node-pool-1'
-amf_worker_node_rmem_max=4194304
-amf_worker_node_wmem_max=4194304
+# AMF sysctl values
+# note: kernel.sched_rt_runtime_us': -1 -> only for RHEL / CentOS (Openshift, NCS, ...)
+amf_worker_node_sysctl={
+'net.core.rmem_max': 4194304,
+'net.core.wmem_max': 4194304,
+'kernel.sched_rt_runtime_us': -1,
+'kernel.core_pattern': '/var/crash/core.%p'
+}
+# OPTIONAL: check IPSEC (for 4G - LI)
+check_amf_ipsec=True
+if check_amf_ipsec:
+    amf_worker_node_sysctl['net.ipv4.conf.all.accept_redirects']=0
+    amf_worker_node_sysctl['net.ipv4.conf.all.send_redirects']=0
+    amf_worker_node_sysctl['net.ipv4.conf.default.rp_filter']=0
+    amf_worker_node_sysctl['net.ipv4.conf.default.accept_source_route']=0
+    amf_worker_node_sysctl['net.ipv4.conf.default.send_redirects']=0
+    amf_worker_node_sysctl['net.ipv4.icmp_ignore_bogus_error_responses']=0
+    amf_worker_node_sysctl['net.ipv4.conf.all.rp_filter']=0
 # OPTIONAL: ipvlan host interfaces (see values file of AMF):
 #leave empty when not using ipvlan 
-#amf_host_interface_list=['bond0.101','bond0.301','bond0.401']
-amf_host_interface_list=['bond0.101','bond0.301','bond0.401']
-
+#amf_ipvlan_interface_list=['bond0.101','bond0.301','bond0.401']
+amf_ipvlan_interface_list=['bond0.101','bond0.301','bond0.401']
 
 # cmg:
 # if using dpdk, the worker nodes should use huge pages
 deploy_cmg_with_dpdk=True
-cmg_worker_node_rmem_max=4194304
-cmg_worker_node_wmem_max=4194304
-cmg_worker_node_udp_rmem_min=1048576
-cmg_worker_node_udp_wmem_min=1048576                                                          
+
+# CMG sysctl values
+cmg_worker_node_sysctl={
+'net.ipv4.tcp_rmem' : '187380 655360 6291456',
+'net.ipv4.udp_rmem_min' : 1048576,
+'net.ipv4.udp_wmem_min' : 1048576,
+'net.ipv6.conf.all.forwarding' : 1,
+'net.core.rmem_max':4194304,
+'net.core.wmem_max':4194304,
+'net.core.rmem_default' : 1048576,
+'net.core.wmem_default' : 1048576
+} 
 
 # smf/upf:
 namespace_smf='smf'
@@ -85,6 +122,23 @@ label_cmgnode='hostname=worker'
 # eg: cmg_sriov_interface_list=['eno5','ens1f0','eno6','ens1f1','ens2f0','ens3f0','ens2f1','ens3f1']
 cmg_sriov_interface_list=[]
 cmg_sriov_interface_mtu_min=8900
+# ipvlan for oam:
+cmg_ipvlan_interface_list=[]
+#
+# CSF: check whether k8s cluster interface has got correct mtu size
+# worker node k8s cluster interface name
+# eg:   calico  -> tunl0
+#       cilium  -> cilium_host
+cmg_workernode_k8s_interface_name='tunl0'
+cmg_CSF_mtu_size=9000
+
+# LOG REPORT to FILE:
+#####################
+# send report output to file - files are kept in subfolder 'report_history'
+CREATE_REPORT_FILE=True
+# report file prefix -> full name becomes: REPORT_FILE_PREFIX + '_' + timestamp + '.log'
+REPORT_FILE_PREFIX = 'Telenet_pre-prod'
+report_header_length=115
 
 # variables for report:
 dotline_length=100
