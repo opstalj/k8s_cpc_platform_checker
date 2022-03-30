@@ -1932,6 +1932,16 @@ if __name__ == "__main__":
             # get IP of node:
             my_node_IP = get_Popen_info("kubectl describe node "+list_CMG_workers[i]+" | grep InternalIP|awk '{print $2}'")
             list_CMG_workers[list_CMG_workers.index(list_CMG_workers[i])] = str(my_node_IP).rstrip('\n')
+        # cmg workers sriov:
+        for i in range(0,len(list_CMG_workers_SRIOV)):
+            # get IP of node:
+            my_node_IP = get_Popen_info("kubectl describe node "+list_CMG_workers_SRIOV[i]+" | grep InternalIP|awk '{print $2}'")
+            list_CMG_workers_SRIOV[list_CMG_workers_SRIOV.index(list_CMG_workers_SRIOV[i])] = str(my_node_IP).rstrip('\n')
+        # cmg workers ipvlan:
+        for i in range(0,len(list_CMG_workers_IPVLAN)):
+            # get IP of node:
+            my_node_IP = get_Popen_info("kubectl describe node "+list_CMG_workers_IPVLAN[i]+" | grep InternalIP|awk '{print $2}'")
+            list_CMG_workers_IPVLAN[list_CMG_workers_IPVLAN.index(list_CMG_workers_IPVLAN[i])] = str(my_node_IP).rstrip('\n')
             
     if len(list_AMF_workers)==0:
         print("!! ABORTING -> I could not find any AMF worker nodes? Please check the amf_label parameter?\n")
