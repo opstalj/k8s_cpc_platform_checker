@@ -1898,6 +1898,8 @@ if __name__ == "__main__":
         list_NRD_workers=[x for x in list_NRD_workers if (x not in nodes_to_skip)]
         list_AMF_workers=[x for x in list_AMF_workers if (x not in nodes_to_skip)]
         list_CMG_workers=[x for x in list_CMG_workers if (x not in nodes_to_skip)]
+        list_CMG_workers_SRIOV=[x for x in list_CMG_workers_SRIOV if (x not in nodes_to_skip)]
+        list_CMG_workers_IPVLAN=[x for x in list_CMG_workers_IPVLAN if (x not in nodes_to_skip)]
     
     # do all checks only on 1 node:
     if args.onlynode:
