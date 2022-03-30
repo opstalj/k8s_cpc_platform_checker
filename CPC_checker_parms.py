@@ -3,7 +3,7 @@
 #
 # info: jan.van_opstal@nokia.com
 #
-# v22.02
+# v22.04
 
 # for now:
 worker_node_username='core'
@@ -32,7 +32,7 @@ k8s_cni='cilium'
 cmd_start_kubectl='sudo KUBECONFIG=$KUBECONFIG kubectl '
 
 # label to define a worker node:
-label_workernode='baremetal.cluster.gke.io/node-pool=node-pool-1'
+labels_workernode=['baremetal.cluster.gke.io/node-pool=node-pool-1']
 
 # OPTIONAL: skip the following node(s) when running script:
 # eg: nodes_to_skip=['labmechra010n110.lab.tc.intern.telenet.be']
@@ -45,6 +45,8 @@ checks_to_skip=['check_glusterFS','check_AMF_worker_nodes_docker_msgqueue_unlimi
 # OPTIONAL: run checks in alphabetical order
 run_checks_alphabetically=True
 
+# print out extra info about which nodes are used by the script
+show_extra_info=False                                                               
 # check before running CPC_checker:
 ##################################
 # generic:
@@ -58,7 +60,7 @@ podname_istio_ingressgateway='istio-ingressgateway'
 namespace_nrd_dabatase='nrd'
 namespace_nrd='nrd'
 check_nrd_istio=True
-label_nrdnode='nrd=nrd1'
+labels_nrdnode=['nrd=nrd1']
 label_nrd_database='app=nrddb'
 label_nrd='app=nrd'
 check_NRD_performance=True
@@ -71,7 +73,7 @@ nrd_worker_node_sysctl={
 # amf:
 namespace_amf='amf'
 #label_amf='region=amf'
-label_amfnode='baremetal.cluster.gke.io/node-pool=node-pool-1'
+labels_amfnode=['baremetal.cluster.gke.io/node-pool=node-pool-1']
 # AMF sysctl values
 # note: kernel.sched_rt_runtime_us': -1 -> only for RHEL / CentOS (Openshift, NCS, ...)
 amf_worker_node_sysctl={
@@ -88,7 +90,7 @@ if check_amf_ipsec:
     amf_worker_node_sysctl['net.ipv4.conf.default.rp_filter']=0
     amf_worker_node_sysctl['net.ipv4.conf.default.accept_source_route']=0
     amf_worker_node_sysctl['net.ipv4.conf.default.send_redirects']=0
-    amf_worker_node_sysctl['net.ipv4.icmp_ignore_bogus_error_responses']=0
+    amf_worker_node_sysctl['net.ipv4.icmp_ignore_bogus_error_responses']=1
     amf_worker_node_sysctl['net.ipv4.conf.all.rp_filter']=0
 # OPTIONAL: ipvlan host interfaces (see values file of AMF):
 #leave empty when not using ipvlan 
@@ -101,7 +103,9 @@ deploy_cmg_with_dpdk=True
 
 # CMG sysctl values
 cmg_worker_node_sysctl={
+'net.ipv4.ip_forward' : 1,                          
 'net.ipv4.tcp_rmem' : '187380 655360 6291456',
+'net.ipv4.tcp_wmem' : '187380 655360 6291456',                                              
 'net.ipv4.udp_rmem_min' : 1048576,
 'net.ipv4.udp_wmem_min' : 1048576,
 'net.ipv6.conf.all.forwarding' : 1,
@@ -114,7 +118,9 @@ cmg_worker_node_sysctl={
 # smf/upf:
 namespace_smf='smf'
 namespace_upf='upf'
-label_cmgnode='hostname=worker'
+labels_cmgnode=['hostname=worker']
+# SRIOV:
+labels_cmgnode_sriov=[]        
 #leave empty when you do not want the SRIOV interfaces being checked
 # OPTIONAL: if sriov device plugin is used, check the CMG SRIOV defined interfaces:
 # -> state, mtu size, num of vf, trust on
@@ -122,6 +128,11 @@ label_cmgnode='hostname=worker'
 # eg: cmg_sriov_interface_list=['eno5','ens1f0','eno6','ens1f1','ens2f0','ens3f0','ens2f1','ens3f1']
 cmg_sriov_interface_list=[]
 cmg_sriov_interface_mtu_min=8900
+# IPVLAN:
+# if you use a specific set of worker nodes for hosting the CMG OAM pods,
+# then you can add their label here
+# if they are the same worker nodes as where the other CMG pods can land, then no need to fill in the labels_cmgnode_ipvlan
+labels_cmgnode_ipvlan=[] 
 # ipvlan for oam:
 cmg_ipvlan_interface_list=[]
 #
