@@ -10,7 +10,13 @@
 # comments: jan.van_opstal@nokia.com
 #
 # !! needs input file: CPC_checker_parms.py
-#
+# 
+#         TO DO: allow checks to be performed on a specific CNF: NRD, AMF, SMF or UPF
+# 
+# 22.04 : split checks for CMG SRIOV and IPVLAN worker nodes
+# 22.03 : labelname -> make it a list instead of just 1 value
+#         bug fixing
+#         print extra info if flag is set in CPC_checker_parms.py:  show_extra_info
 # 22.02 : check CSF network MTU size on k8s cluster interface on the worker nodes
 # 22.01 : adapt check for CMG NUMA pinning on NCS
 #         CMG SRIOV -> trust mode not needed
@@ -46,7 +52,25 @@
 
 # CPC_checker_parms.py changes:
 ###############################
-# 22.01:
+# 22.04:
+# 1) NEW:
+#   labels_cmgnode_sriov                        : list of labels assigned to CMG worker nodes using SRIOV
+#   labels_cmgnode_ipvlan                       : list of labels assigned to CMG worker nodes using IPVLAN
+# 22.03:
+# 1) NEW:
+#   labels_workernode:                          : list of labels assigned to worker nodes
+#   labels_nrdnode:                             : list of labels assigned to NRD worker node
+#   labels_cmgnode:                             : list of labels assigned to SMF/UPF worker node
+#   labels_amfnode:                             : list of labels assigned to AMF worker node
+#   show_extra_info:                            : flag to indicate whether you want to see the extra info or not
+#
+# 2) DEPRECATED:
+#   label_workernode:                           : replaced by labels_workernode
+#   label_nrdnode:                              : replaced by labels_nrdnode
+#   label_cmgnode:                              : replaced by labels_cmgnode
+#   label_amfnode:                              : replaced by labels_amfnode
+# 
+# 22.02:
 # 1) NEW:
 #   cmg_CSF_mtu_size                            : required MTU size for the CSF (default: 9000)
 #
@@ -97,7 +121,7 @@ import CPC_checker_parms
 from CPC_checker_parms import *
 import re
 
-CPC_PLATFORM_CHECKER_VERSION = "version 22.01UC"
+CPC_PLATFORM_CHECKER_VERSION = "version 22.04"
 
 def CPC_report(indents,addToReport,status=True,info_value=''):
     global CPC_checker_report
@@ -709,7 +733,10 @@ def check_AMF_worker_nodes_ipsec_service_active():
     
     # NOTE: only needed for 4G LI ... not for 5G LI
     apply_to=list_AMF_workers
-    cmd_to_exec='"sudo systemctl show -p ActiveState --value ipsec"'
+    if amf_worker_node_OS_RHEL_or_CentOS:
+        cmd_to_exec='"systemctl --no-pager status ipsec.service |grep \'Active: active\'|awk \'{print \$2}\'"'
+    else:
+        cmd_to_exec='"sudo systemctl show -p ActiveState --value ipsec"'
     criteria_ok='matches value in list'
     msg_ok='has correct setting'
     to_printValue=' -> ipsec service = '
@@ -1012,8 +1039,8 @@ def check_CMG_worker_nodes_sriov_interfaces():
     global_check_OK=True      
 
     if cmg_sriov_interface_list:
-        for i in range(0, len(list_CMG_workers)):
-            CPC_checker_report+=level2*' '+"node: "+str(list_CMG_workers[i])+'\n'
+        for i in range(0, len(list_CMG_workers_SRIOV)):
+            CPC_checker_report+=level2*' '+"node: "+str(list_CMG_workers_SRIOV[i])+'\n'
             #### get value:        
             for interface in range(0, len(cmg_sriov_interface_list)):
                 # check 1: interface up and running?
@@ -1022,25 +1049,25 @@ def check_CMG_worker_nodes_sriov_interfaces():
                 #cmd_to_exec='"sudo /usr/sbin/ifconfig "' + cmg_sriov_interface_list[interface]
                 cmd_to_exec='"sudo ip a show "' + cmg_sriov_interface_list[interface]                
                 if login_worker_nodes_with_SSHKEY:
-                    my_info=get_Popen_info('ssh -q -i '+sshkey+' '+worker_node_username+'@'+str(list_CMG_workers[i])+' '+cmd_to_exec,True)
+                    my_info=get_Popen_info('ssh -q -i '+sshkey+' '+worker_node_username+'@'+str(list_CMG_workers_SRIOV[i])+' '+cmd_to_exec,True)
                 else:
                     if skip_username_worker_node_to_ssh:        
-                        my_info=get_Popen_info('ssh -q '+str(list_CMG_workers[i])+' '+cmd_to_exec,True)
+                        my_info=get_Popen_info('ssh -q '+str(list_CMG_workers_SRIOV[i])+' '+cmd_to_exec,True)
                     else:
-                        my_info=get_Popen_info('ssh -q '+worker_node_username+'@'+str(list_CMG_workers[i])+' '+cmd_to_exec,True)
+                        my_info=get_Popen_info('ssh -q '+worker_node_username+'@'+str(list_CMG_workers_SRIOV[i])+' '+cmd_to_exec,True)
                 #print(' -> my info:',str(my_info)+'FFFFFFF')
                 if my_info.startswith("ERROR:"):
                     global_check_OK=False
                     failure_reason = str(my_info)
                     CPC_checker_report+=level3*' '+failure_reason.ljust(dotline_length-level3+level2,'.')+' FAILED\n'
                     if not create_report:
-                        return("NOK","node: "+str(list_CMG_workers[i])+' '+failure_reason)                
+                        return("NOK","node: "+str(list_CMG_workers_SRIOV[i])+' '+failure_reason)                
                 elif my_info=="ERROR":
                     global_check_OK=False
                     failure_reason = ' -> SSH error occurred?'
                     CPC_checker_report+=level3*' '+failure_reason.ljust(dotline_length-level3+level2,'.')+' FAILED\n'
                     if not create_report:
-                        return("NOK","node: "+str(list_CMG_workers[i])+' '+failure_reason)
+                        return("NOK","node: "+str(list_CMG_workers_SRIOV[i])+' '+failure_reason)
                 else:
                     # check whether interface is UP and RUNNING:
                     #if not "UP,BROADCAST,RUNNING" in my_info:
@@ -1049,7 +1076,7 @@ def check_CMG_worker_nodes_sriov_interfaces():
                         global_check_OK=False
                         CPC_checker_report+=level3*' '+failure_reason.ljust(dotline_length-level3+level2,'.')+' FAILED\n'
                         if not create_report:
-                            return("NOK","node: "+str(list_CMG_workers[i])+' '+failure_reason)
+                            return("NOK","node: "+str(list_CMG_workers_SRIOV[i])+' '+failure_reason)
                     else:
                         # sriov interface is up and running
                         CPC_checker_report+=level3*' '+'has interface: ' + cmg_sriov_interface_list[interface]+' \n'
@@ -1062,7 +1089,7 @@ def check_CMG_worker_nodes_sriov_interfaces():
                             failure_reason = 'mtu = ' + str(interface_mtu_size) + ' (NOK: is NOT above: '+str(cmg_sriov_interface_mtu_min)+')'
                             CPC_checker_report+=level4*' '+failure_reason.ljust(dotline_length-level4+level2,'.')+' FAILED\n'
                             if not create_report:
-                                return("NOK","node: "+str(list_CMG_workers[i])+' '+failure_reason)
+                                return("NOK","node: "+str(list_CMG_workers_SRIOV[i])+' '+failure_reason)
                         else:
                             # mtu size is OK
                             msg_ok = 'mtu = ' + str(interface_mtu_size) + ' (OK: is above: '+str(cmg_sriov_interface_mtu_min)+')'
@@ -1072,19 +1099,19 @@ def check_CMG_worker_nodes_sriov_interfaces():
                             #cmd_to_exec='"sudo /usr/sbin/ip link show "' + cmg_sriov_interface_list[interface] + '" | grep \'   vf\' | wc -l"'
                             cmd_to_exec='"sudo /usr/sbin/ip link show "' + cmg_sriov_interface_list[interface]
                             if login_worker_nodes_with_SSHKEY:
-                                my_info=get_Popen_info('ssh -q -i '+sshkey+' '+worker_node_username+'@'+str(list_CMG_workers[i])+' '+cmd_to_exec,True)
+                                my_info=get_Popen_info('ssh -q -i '+sshkey+' '+worker_node_username+'@'+str(list_CMG_workers_SRIOV[i])+' '+cmd_to_exec,True)
                             else:
                                 if skip_username_worker_node_to_ssh:        
-                                    my_info=get_Popen_info('ssh -q '+str(list_CMG_workers[i])+' '+cmd_to_exec,True)
+                                    my_info=get_Popen_info('ssh -q '+str(list_CMG_workers_SRIOV[i])+' '+cmd_to_exec,True)
                                 else:
-                                    my_info=get_Popen_info('ssh -q '+worker_node_username+'@'+str(list_CMG_workers[i])+' '+cmd_to_exec,True)
+                                    my_info=get_Popen_info('ssh -q '+worker_node_username+'@'+str(list_CMG_workers_SRIOV[i])+' '+cmd_to_exec,True)
                             number_of_vf=my_info.count('vf ')
                             if not number_of_vf > 0:
                                 global_check_OK=False
                                 failure_reason = 'number of VF functions = '+str(number_of_vf)+' (NOK: is not above 0)'
                                 CPC_checker_report+=level4*' '+failure_reason.ljust(dotline_length-level4+level2,'.')+' FAILED\n'
                                 if not create_report:
-                                    return("NOK","node: "+str(list_CMG_workers[i])+' '+failure_reason)                            
+                                    return("NOK","node: "+str(list_CMG_workers_SRIOV[i])+' '+failure_reason)                            
                             else:
                                 # at least 1x vf: vf 0:
                                 msg_ok='number of VF functions = '+str(number_of_vf)+' (OK: is above 0)'
@@ -1101,7 +1128,7 @@ def check_CMG_worker_nodes_sriov_interfaces():
                                         # failure_reason = 'trust off for some VFs (NOK: trust must be on for all VFs)'
                                         # CPC_checker_report+=level4*' '+failure_reason.ljust(dotline_length-level4+level2,'.')+' FAILED\n'
                                         # if not create_report:
-                                            # return("NOK","node: "+str(list_CMG_workers[i])+' '+failure_reason)                            
+                                            # return("NOK","node: "+str(list_CMG_workers_SRIOV[i])+' '+failure_reason)                            
                                     # else:
                                         # msg_ok='trust mode is on for the VFs'
                                         # CPC_checker_report+=level4*' '+msg_ok.ljust(dotline_length-level4+level2,'.')+' OK\n'      
@@ -1124,6 +1151,7 @@ def check_CMG_NUMA_pinning():
     # topologyManagerPolicy: single-numa-node
     #
     # ? how check:  --topology-manager-scope=pod
+    # lscpu |grep -i numa
 
     ### NCS ###
     if target_platform == 'ncs':
@@ -1148,7 +1176,7 @@ def check_CMG_NUMA_pinning():
     else:
         #### GCP or ECCD ####
         apply_to=list_CMG_workers
-        cmd_to_exec='"sudo cat /var/lib/kubelet/config.yaml |grep \'topologyManagerPolicy: single-numa-node\'"'
+        cmd_to_exec='"sudo cat /var/lib/kubelet/config.yaml |grep \'topologyManagerPolicy: \\"single-numa-node\\"\'"'
         criteria_ok='info returned not empty'
         msg_ok='has topologyManagerPolicy: single-numa-node'
         msg_nok='does not have topologyManagerPolicy: single-numa-node'        
@@ -1240,8 +1268,8 @@ def check_CMG_worker_nodes_ipvlan_interfaces():
     global_check_OK=True      
 
     if cmg_ipvlan_interface_list:
-        for i in range(0, len(list_CMG_workers)):
-            CPC_checker_report+=level2*' '+"node: "+str(list_CMG_workers[i])+'\n'
+        for i in range(0, len(list_CMG_workers_IPVLAN)):
+            CPC_checker_report+=level2*' '+"node: "+str(list_CMG_workers_IPVLAN[i])+'\n'
             #### get value:        
             for interface in range(0, len(cmg_ipvlan_interface_list)):
                 # check 1: interface up and running?
@@ -1251,25 +1279,25 @@ def check_CMG_worker_nodes_ipvlan_interfaces():
                 cmd_to_exec='"sudo ip a show "' + cmg_ipvlan_interface_list[interface]                
                 #cmd_to_exec='"sudo /usr/sbin/ifconfig "' + cmg_ipvlan_interface_list[interface]
                 if login_worker_nodes_with_SSHKEY:
-                    my_info=get_Popen_info('ssh -q -i '+sshkey+' '+worker_node_username+'@'+str(list_CMG_workers[i])+' '+cmd_to_exec,True)
+                    my_info=get_Popen_info('ssh -q -i '+sshkey+' '+worker_node_username+'@'+str(list_CMG_workers_IPVLAN[i])+' '+cmd_to_exec,True)
                 else:
                     if skip_username_worker_node_to_ssh:        
-                        my_info=get_Popen_info('ssh -q '+str(list_CMG_workers[i])+' '+cmd_to_exec,True)
+                        my_info=get_Popen_info('ssh -q '+str(list_CMG_workers_IPVLAN[i])+' '+cmd_to_exec,True)
                     else:
-                        my_info=get_Popen_info('ssh -q '+worker_node_username+'@'+str(list_CMG_workers[i])+' '+cmd_to_exec,True)
+                        my_info=get_Popen_info('ssh -q '+worker_node_username+'@'+str(list_CMG_workers_IPVLAN[i])+' '+cmd_to_exec,True)
                 #print(' -> my info:',str(my_info)+'FFFFFFF')
                 if my_info.startswith("ERROR:"):
                     global_check_OK=False
                     failure_reason = str(my_info)
                     CPC_checker_report+=level3*' '+failure_reason.ljust(dotline_length-level3+level2,'.')+' FAILED\n'
                     if not create_report:
-                        return("NOK","node: "+str(list_CMG_workers[i])+' '+failure_reason)                
+                        return("NOK","node: "+str(list_CMG_workers_IPVLAN[i])+' '+failure_reason)                
                 elif my_info=="ERROR":
                     global_check_OK=False
                     failure_reason = ' -> SSH error occurred?'
                     CPC_checker_report+=level3*' '+failure_reason.ljust(dotline_length-level3+level2,'.')+' FAILED\n'
                     if not create_report:
-                        return("NOK","node: "+str(list_CMG_workers[i])+' '+failure_reason)
+                        return("NOK","node: "+str(list_CMG_workers_IPVLAN[i])+' '+failure_reason)
                 else:
                     # check whether interface is UP and RUNNING:
                     # if no ifconfig on the worker nodes - change2/2:
@@ -1279,7 +1307,7 @@ def check_CMG_worker_nodes_ipvlan_interfaces():
                         global_check_OK=False
                         CPC_checker_report+=level3*' '+failure_reason.ljust(dotline_length-level3+level2,'.')+' FAILED\n'
                         if not create_report:
-                            return("NOK","node: "+str(list_CMG_workers[i])+' '+failure_reason)
+                            return("NOK","node: "+str(list_CMG_workers_IPVLAN[i])+' '+failure_reason)
                     else:
                         # sriov interface is up and running
                         msg_ok = 'has interface: ' + cmg_ipvlan_interface_list[interface]+' -> UP & RUNNING'
@@ -1359,10 +1387,10 @@ def check_CMG_worker_nodes_k8s_cluster_CSF_mtu_size():
                         CPC_checker_report+=level3*' '+failure_reason.ljust(dotline_length-level3+level2,'.')+' FAILED\n'
                         if not create_report:
                             return("NOK","node: "+str(list_CMG_workers[i])+' '+failure_reason)
-                else:
-                    # mtu size is OK
-                    msg_ok = 'mtu = ' + str(interface_mtu_size) + ' (OK: is above or equal to: '+str(cmg_CSF_mtu_size)+')'
-                    CPC_checker_report+=level3*' '+msg_ok.ljust(dotline_length-level3+level2,'.')+' OK\n'
+                    else:
+                        # mtu size is OK
+                        msg_ok = 'mtu = ' + str(interface_mtu_size) + ' (OK: is above or equal to: '+str(cmg_CSF_mtu_size)+')'
+                        CPC_checker_report+=level3*' '+msg_ok.ljust(dotline_length-level3+level2,'.')+' OK\n'
     else:
         global_check_OK=False
         failure_reason="cmg_workernode_k8s_interface_name is empty in CPC_checker_parms.py"
@@ -1468,6 +1496,8 @@ def create_report_extra_info():
     CPC_checker_report_extra_info+=create_list_overview(list_NRD_workers,'NRD worker nodes')
     CPC_checker_report_extra_info+=create_list_overview(list_AMF_workers,'AMF worker nodes')
     CPC_checker_report_extra_info+=create_list_overview(list_CMG_workers,'CMG worker nodes')
+    CPC_checker_report_extra_info+=create_list_overview(list_CMG_workers_SRIOV,'CMG worker nodes SRIOV')
+    CPC_checker_report_extra_info+=create_list_overview(list_CMG_workers_IPVLAN,'CMG worker nodes IPVLAN')
     CPC_checker_report_extra_info+=create_list_overview(nodes_to_skip,'skipped nodes')
     if checks_to_skip:  # list not empty:
         CPC_checker_report_extra_info+=create_list_overview(checks_to_skip,'skipped checks')   
@@ -1625,15 +1655,19 @@ if __name__ == "__main__":
 
     # CHECK OS of WORKER NODES: 
     ###########################
-    #FIRSTHEALTHYNODE=`kubectl get nodes|grep Ready|head -n1|cut -d' ' -f1`;k get node $FIRSTHEALTHYNODE -o custom-columns=OS:.status.nodeInfo.osImage --no-headers
+    #FIRSTHEALTHYNODE=`kubectl get nodes|grep Ready|head -n1|cut -d' ' -f1`;kubectl get node $FIRSTHEALTHYNODE -o custom-columns=OS:.status.nodeInfo.osImage --no-headers
     
     # if OS is not RHEL or Centos -> remove check on sysctl kernel.sched_rt_runtime_us': -1 
-    cmd=cmd_start_kubectl+'get get nodes|grep Ready|head -n1|cut -d' ' -f1`;k get node $FIRSTHEALTHYNODE -o custom-columns=OS:.status.nodeInfo.osImage --no-headers'
+    # -> only checking 1st label of amfnodes - I expect all worker nodes for AMF having the same OS
+    cmd='FIRSTHEALTHYNODE=`'+cmd_start_kubectl+' get nodes -l '+labels_amfnode[0]+'|grep Ready|head -n1|cut -d' ' -f1`;kubectl get node $FIRSTHEALTHYNODE -o custom-columns=OS:.status.nodeInfo.osImage --no-headers'
     my_workerNode_OS=get_Popen_info(cmd)
     # Red Hat -> Red Hat Enterprise Linux 8.4 (Ootpa)
     match_OS=['Red Hat','CentOS']
+    amf_worker_node_OS_RHEL_or_CentOS=False
     if not(any(x in my_workerNode_OS for x in match_OS)):
         amf_worker_node_sysctl.pop("kernel.sched_rt_runtime_us",None)
+    else:
+        amf_worker_node_OS_RHEL_or_CentOS=True
         
     # SRIOV interfaces checken?    
     # -> config map describes SRIOV implementation:   k describe -n kube-system cm sriovdp-config 
@@ -1732,8 +1766,28 @@ if __name__ == "__main__":
         #cmd='for i in `'+cmd_start_kubectl+'get node --selector=\'!node-role.kubernetes.io/master\' -o custom-columns=NAME:.metadata.name --no-headers`;do echo $i;'+cmd_start_kubectl+'describe node $i |sed -n -e \'/Allocatable/,/System Info:/ p\' |grep sriov;done'       
         #cmd='for i in `'+cmd_start_kubectl+'get node --selector=\'node-role.kubernetes.io/worker\' -o custom-columns=NAME:.metadata.name --no-headers`;do echo $i;'+cmd_start_kubectl+'describe node $i |sed -n -e \'/Allocatable/,/System Info:/ p\' |grep sriov;done'       
         # use parameter to define worker node:
-        cmd='for i in `'+cmd_start_kubectl+'get node --selector='+label_workernode+' -o custom-columns=NAME:.metadata.name --no-headers`;do echo $i;'+cmd_start_kubectl+'describe node $i |sed -n -e \'/Allocatable/,/System Info:/ p\' |grep sriov;done'
-        
+        #
+        # for now: do the SRIOV check only on CMG nodes
+        #       
+        list_CMG_workers=[]
+        list_CMG_workers_SRIOV=[]
+        if labels_cmgnode_sriov: 
+            for i in range(0,len(labels_cmgnode_sriov)):
+                my_info = get_Popen_info(cmd_start_kubectl+"get node --show-labels|grep -e '"+labels_cmgnode_sriov[i]+"'|awk '{print $1}'")
+                list_CMG_workers_SRIOV = list_CMG_workers_SRIOV + my_info.splitlines()  
+            # remove duplicates 
+            list_CMG_workers_SRIOV=sorted(list(set(list_CMG_workers_SRIOV)))
+        else:
+            for i in range(0,len(labels_cmgnode)):
+                my_info = get_Popen_info(cmd_start_kubectl+"get node --show-labels|grep -e '"+labels_cmgnode[i]+"'|awk '{print $1}'")
+                list_CMG_workers = list_CMG_workers + my_info.splitlines()
+            # remove duplicates
+            list_CMG_workers = sorted(list(set(list_CMG_workers)))        
+            list_CMG_workers_SRIOV = list_CMG_workers
+        my_CMG_workers=''
+        for i in range(0,len(list_CMG_workers_SRIOV)):
+            my_CMG_workers += list_CMG_workers_SRIOV[i]+' '
+        cmd='for i in '+my_CMG_workers+';do echo $i;'+cmd_start_kubectl+'describe node $i |sed -n -e \'/Allocatable/,/System Info:/ p\' |grep sriov;done'
         my_nodeInfo=get_Popen_info(cmd)
         print('\n'+my_nodeInfo)
         sys.exit()
@@ -1765,22 +1819,75 @@ if __name__ == "__main__":
     # list_workers = get_all_workers.stdout.read().decode('utf-8').splitlines()
     #my_info = get_Popen_info(cmd_start_kubectl+"get node --selector='node-role.kubernetes.io/worker' -o custom-columns=NAME:.metadata.name --no-headers")
     #my_info = get_Popen_info(cmd_start_kubectl+"get node --selector='!node-role.kubernetes.io/master' -o custom-columns=NAME:.metadata.name --no-headers")
-    my_info = get_Popen_info(cmd_start_kubectl+"get node --selector='"+label_workernode+"' -o custom-columns=NAME:.metadata.name --no-headers")
-    list_workers = my_info.splitlines()
+    
+    #my_info = get_Popen_info(cmd_start_kubectl+"get node --selector='"+label_workernode+"' -o custom-columns=NAME:.metadata.name --no-headers")
+    #list_workers = my_info.splitlines()
+    list_workers=[] 
+    for i in range(0,len(labels_workernode)):
+        my_info = get_Popen_info(cmd_start_kubectl+"get node --show-labels|grep -e '"+labels_workernode[i]+"'|awk '{print $1}'")
+        list_workers = list_workers + my_info.splitlines()  
+    # remove duplicates    
+    list_workers = sorted(list(set(list_workers)))
+
     
     # build list of NRD worker nodes
-    my_info = get_Popen_info(cmd_start_kubectl+"get node --show-labels|grep -e '"+label_nrdnode+"'|awk '{print $1}'")
-    list_NRD_workers = my_info.splitlines() 
+    # my_info = get_Popen_info(cmd_start_kubectl+"get node --show-labels|grep -e '"+label_nrdnode+"'|awk '{print $1}'")
+    # list_NRD_workers = my_info.splitlines() 
+    list_NRD_workers=[]
+    for i in range(0,len(labels_amfnode)):
+        my_info = get_Popen_info(cmd_start_kubectl+"get node --show-labels|grep -e '"+labels_nrdnode[i]+"'|awk '{print $1}'")
+        list_NRD_workers = list_NRD_workers + my_info.splitlines()  
+    # remove duplicates    
+    list_NRD_workers = sorted(list(set(list_NRD_workers)))
+
     
     # build list of AMF worker nodes
     #get_all_AMF_workers = Popen("kubectl get node --show-labels|grep '"+label_amf+"'|awk '{print $1}'",shell=True, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     #list_AMF_workers = get_all_AMF_workers.stdout.read().decode('utf-8').splitlines()
-    my_info = get_Popen_info(cmd_start_kubectl+"get node --show-labels|grep -e '"+label_amfnode+"'|awk '{print $1}'")
-    list_AMF_workers = my_info.splitlines() 
+    # my_info = get_Popen_info(cmd_start_kubectl+"get node --show-labels|grep -e '"+label_amfnode+"'|awk '{print $1}'")
+    # list_AMF_workers = my_info.splitlines() 
+    list_AMF_workers=[]
+    for i in range(0,len(labels_amfnode)):
+        my_info = get_Popen_info(cmd_start_kubectl+"get node --show-labels|grep -e '"+labels_amfnode[i]+"'|awk '{print $1}'")
+        list_AMF_workers = list_AMF_workers + my_info.splitlines()  
+    # remove duplicates    
+    list_AMF_workers = sorted(list(set(list_AMF_workers)))
     
     # build list of CMG worker nodes
-    my_info = get_Popen_info(cmd_start_kubectl+"get node --show-labels|grep -e '"+label_cmgnode+"'|awk '{print $1}'")
-    list_CMG_workers = my_info.splitlines()  
+    #my_info = get_Popen_info(cmd_start_kubectl+"get node --show-labels|grep -e '"+label_cmgnode+"'|awk '{print $1}'")
+    list_CMG_workers=[]
+    for i in range(0,len(labels_cmgnode)):
+        my_info = get_Popen_info(cmd_start_kubectl+"get node --show-labels|grep -e '"+labels_cmgnode[i]+"'|awk '{print $1}'")
+        list_CMG_workers = list_CMG_workers + my_info.splitlines()  
+    # remove duplicates       
+    list_CMG_workers = sorted(list(set(list_CMG_workers)))
+    
+    # SRIOV:
+    list_CMG_workers_SRIOV=[]
+    if labels_cmgnode_sriov: 
+        for i in range(0,len(labels_cmgnode_sriov)):
+            my_info = get_Popen_info(cmd_start_kubectl+"get node --show-labels|grep -e '"+labels_cmgnode_sriov[i]+"'|awk '{print $1}'")
+            list_CMG_workers_SRIOV = list_CMG_workers_SRIOV + my_info.splitlines()  
+        # remove duplicates 
+        list_CMG_workers_SRIOV=sorted(list(set(list_CMG_workers_SRIOV)))
+    else:
+        list_CMG_workers_SRIOV=list_CMG_workers
+    
+    # IPVLAN:
+    list_CMG_workers_IPVLAN=[]
+    if labels_cmgnode_ipvlan:
+        for i in range(0,len(labels_cmgnode_ipvlan)):
+            my_info = get_Popen_info(cmd_start_kubectl+"get node --show-labels|grep -e '"+labels_cmgnode_ipvlan[i]+"'|awk '{print $1}'")
+            list_CMG_workers_IPVLAN = list_CMG_workers_IPVLAN + my_info.splitlines()  
+        # remove duplicates 
+        list_CMG_workers_IPVLAN=sorted(list(set(list_CMG_workers_IPVLAN)))
+    else:
+        list_CMG_workers_IPVLAN=list_CMG_workers_SRIOV
+    
+    # list_CMG_workers contains all nodes: labels_cmgnode + labels_cmgnode_SRIOV + labels_cmgnode_IPVLAN
+    list_CMG_workers = list_CMG_workers + list_CMG_workers_SRIOV + list_CMG_workers_IPVLAN
+    # remove duplicates       
+    list_CMG_workers = sorted(list(set(list_CMG_workers)))
 
     if args.skipnode:
         nodes_to_skip.append(args.skipnode)
@@ -1879,7 +1986,7 @@ if __name__ == "__main__":
         print('****************************')
         print(CPC_checker_report_header)
         print(CPC_checker_report)
-        if not args.onlynode:
+        if not args.onlynode and show_extra_info:
             print('Some extra info:')
             create_report_extra_info()  
             print(CPC_checker_report_extra_info)
